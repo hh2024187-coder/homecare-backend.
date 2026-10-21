@@ -1,0 +1,940 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HomeCare - Gestión de Visitas Domiciliarias</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Librería html2pdf.js -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+  <style>
+    :root {
+      --bg-dark: #0a192f;
+      --bg-card: #112240;
+      --bg-hover: #1d3557;
+      --text-main: #e6f1ff;
+      --text-muted: #8892b0;
+      --accent-blue: #0077b6;
+      --accent-light: #00b4d8;
+      --danger: #e63946;
+      --warning: #ffb703;
+      --success: #2a9d8f;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+    body { background-color: #0d3b99; color: var(--text-main); display: flex; height: 100vh; overflow: hidden; }
+
+    /* Sidebar Navigation */
+    .sidebar { width: 250px; background-color: #03045e; padding: 20px; display: flex; flex-direction: column; justify-content: space-between; }
+    .brand { display: flex; align-items: center; gap: 12px; font-size: 1.4rem; font-weight: bold; color: white; margin-bottom: 30px; }
+    .brand i { background-color: var(--accent-light); padding: 10px; border-radius: 50%; color: #03045e; }
+    .nav-list { list-style: none; display: flex; flex-direction: column; gap: 10px; }
+    .nav-item { padding: 12px 15px; border-radius: 8px; cursor: pointer; color: var(--text-muted); display: flex; align-items: center; gap: 12px; transition: 0.3s; }
+    .nav-item.active, .nav-item:hover { background-color: var(--accent-blue); color: white; }
+    
+    .user-profile { display: flex; align-items: center; justify-content: space-between; padding-top: 15px; border-top: 1px solid rgba(255,255,255,0.1); }
+    .user-info { display: flex; align-items: center; gap: 10px; }
+    .user-info i { font-size: 1.5rem; background: #00b4d8; padding: 8px; border-radius: 50%; color: #03045e; }
+    .btn-logout { background: transparent; border: none; color: var(--danger); cursor: pointer; font-size: 1.1rem; }
+
+    /* Main Content */
+    .main-content { flex: 1; padding: 25px; overflow-y: auto; display: flex; flex-direction: column; gap: 20px; background-color: #0e43a8; }
+    .header-container { display: flex; justify-content: space-between; align-items: center; }
+    .header-title h1 { font-size: 1.8rem; color: white; }
+    .header-title p { color: #b0c4de; font-size: 0.9rem; }
+
+    .btn-nueva-cita {
+      background-color: #00a8ff; color: white; border: none; padding: 10px 20px;
+      border-radius: 8px; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 8px;
+    }
+    .btn-nueva-cita:hover { background-color: #008cdb; }
+
+    /* Sections */
+    .content-section { display: none; flex-direction: column; gap: 20px; }
+    .content-section.active { display: flex; }
+
+    /* Cards Stats */
+    .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+    .stat-card { background-color: #0b2559; padding: 20px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; border: 1px solid rgba(255,255,255,0.05); }
+    .stat-number { font-size: 2.2rem; font-weight: bold; margin-top: 5px; }
+
+    /* Map Layout */
+    .map-container { background-color: #0b2559; padding: 15px; border-radius: 12px; height: 480px; display: flex; flex-direction: column; gap: 10px; }
+    .map-layout { display: flex; gap: 15px; flex: 1; height: 100%; min-height: 0; }
+    
+    .locations-sidebar {
+      width: 330px; background-color: #07193d; border-radius: 8px; padding: 12px;
+      display: flex; flex-direction: column; gap: 10px; overflow-y: auto; border: 1px solid rgba(255,255,255,0.05);
+    }
+    .location-card {
+      background-color: #0b2559; padding: 14px; border-radius: 10px; cursor: pointer;
+      border: 1px solid rgba(255,255,255,0.08); transition: 0.2s; display: flex; flex-direction: column; gap: 6px;
+    }
+    .location-card:hover, .location-card.active { background-color: #0077b6; border-color: #00b4d8; transform: translateY(-1px); }
+    .location-card h5 { font-size: 0.95rem; color: white; display: flex; justify-content: space-between; align-items: center; }
+    .location-card p { font-size: 0.8rem; color: #b0c4de; margin: 0; line-height: 1.3; }
+    .location-badge { font-size: 0.72rem; padding: 3px 8px; border-radius: 12px; font-weight: bold; }
+
+    /* IFRAME GOOGLE MAPS CON MARCADOR Y BURBUJA */
+    .map-iframe-box { flex: 1; border-radius: 8px; overflow: hidden; height: 100%; border: 1px solid rgba(255,255,255,0.1); }
+    .map-iframe-box iframe { width: 100%; height: 100%; border: 0; }
+
+    /* Controls Bar */
+    .controls-bar { display: flex; justify-content: space-between; align-items: center; gap: 15px; margin-bottom: 15px; }
+    .search-box { position: relative; flex: 1; max-width: 350px; }
+    .search-box input {
+      width: 100%; padding: 10px 15px 10px 38px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1);
+      background-color: #0b2559; color: white; outline: none;
+    }
+    .search-box i { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-muted); }
+    
+    .select-filter {
+      padding: 10px 15px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1);
+      background-color: #0b2559; color: white; outline: none;
+    }
+
+    .badge-bd { background-color: rgba(42, 157, 143, 0.2); color: #2a9d8f; padding: 8px 15px; border-radius: 20px; font-size: 0.85rem; font-weight: bold; }
+    .btn-pdf { background-color: #6a1b4d; color: white; border: none; padding: 10px 18px; border-radius: 8px; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 8px; }
+    .btn-pdf:hover { background-color: #852261; }
+
+    /* Tables */
+    .data-table-container { background-color: #0b2559; padding: 20px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05); }
+    table { width: 100%; border-collapse: collapse; text-align: left; }
+    th, td { padding: 14px; border-bottom: 1px solid rgba(255,255,255,0.08); font-size: 0.9rem; vertical-align: middle; }
+    th { color: #b0c4de; font-weight: 600; text-transform: uppercase; font-size: 0.8rem; }
+    tr:hover { background-color: rgba(255,255,255,0.03); }
+
+    /* Estilos de Etiquetas de Prioridad */
+    .badge-prioridad { padding: 6px 14px; border-radius: 15px; font-size: 0.8rem; font-weight: bold; display: inline-block; }
+    .badge-baja { background: rgba(136, 146, 176, 0.2); color: #8892b0; }
+    .badge-normal { background: #003060; color: #00b4d8; }
+    .badge-alta { background: rgba(255, 183, 3, 0.2); color: #ffb703; }
+    .badge-urgente { background: rgba(230, 57, 70, 0.2); color: var(--danger); }
+    
+    .status-tag { padding: 6px 14px; border-radius: 15px; font-size: 0.8rem; font-weight: bold; display: inline-block; }
+    .status-pendiente { background: rgba(255, 183, 3, 0.2); color: #ffb703; }
+    .status-completada { background: rgba(42, 157, 143, 0.2); color: #2a9d8f; }
+
+    .action-btn { background: #003060; border: none; color: #00b4d8; width: 34px; height: 34px; border-radius: 6px; cursor: pointer; transition: 0.2s; }
+    .action-btn:hover { background: #00509d; color: white; }
+    .action-btn.completed { background: rgba(42, 157, 143, 0.2); color: #2a9d8f; }
+    .action-btn.completed:hover { background: #2a9d8f; color: white; }
+    .action-btn.delete { background: #4a121a; color: #e63946; }
+    .action-btn.delete:hover { background: #e63946; color: white; }
+
+    /* Directory Grid Patients */
+    .patients-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+    .patient-card {
+      background-color: #0b2559; border-radius: 12px; padding: 20px; display: flex;
+      align-items: center; justify-content: space-between; border: 1px solid rgba(255,255,255,0.05);
+    }
+    .patient-avatar {
+      width: 45px; height: 45px; border-radius: 50%; background: #003060;
+      color: #00b4d8; display: flex; justify-content: center; align-items: center;
+      font-weight: bold; font-size: 1.2rem; border: 1px solid #00b4d8;
+    }
+    .patient-details h4 { font-size: 1rem; color: white; margin-bottom: 4px; }
+    .patient-details p { font-size: 0.82rem; color: #b0c4de; margin-bottom: 2px; }
+
+    /* Modales */
+    .modal-overlay {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(10, 25, 47, 0.95); display: flex; justify-content: center; align-items: center; z-index: 9999;
+    }
+    .login-box, .modal-box {
+      background: #112240; padding: 35px; border-radius: 12px; width: 100%; max-width: 450px; text-align: center;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.5); position: relative;
+    }
+    .modal-box h3 { color: white; margin-bottom: 15px; }
+    .form-group { text-align: left; margin-bottom: 12px; }
+    .form-group label { display: block; font-size: 0.85rem; margin-bottom: 4px; color: var(--text-muted); }
+    .form-group input, .form-group textarea, .form-group select {
+      width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #233554;
+      background: #0a192f; color: white; outline: none;
+    }
+    .expediente-view-box {
+      text-align: left; background: #0a192f; padding: 15px; border-radius: 8px; font-size: 0.9rem; line-height: 1.6;
+    }
+    .expediente-view-box p { margin-bottom: 8px; }
+    .expediente-view-box strong { color: var(--accent-light); }
+
+    .btn-submit {
+      width: 100%; padding: 12px; background: var(--accent-light); color: #03045e;
+      border: none; border-radius: 6px; font-weight: bold; cursor: pointer; margin-top: 10px;
+    }
+    .btn-close { position: absolute; right: 15px; top: 15px; background: transparent; border: none; color: var(--text-muted); font-size: 1.2rem; cursor: pointer; }
+    .error-msg { color: var(--danger); font-size: 0.85rem; margin-top: 10px; display: none; }
+  </style>
+</head>
+<body>
+
+  <!-- MODAL LOGIN -->
+  <div id="loginModal" class="modal-overlay">
+    <div class="login-box">
+      <div class="brand" style="justify-content: center; margin-bottom: 15px;">
+        <i class="fa-solid fa-heart-pulse"></i>
+        <span>HomeCare</span>
+      </div>
+      <h2>Iniciar Sesión</h2>
+      <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 20px;">Acceso restringido al personal médico</p>
+
+      <form id="loginForm">
+        <div class="form-group">
+          <label>Correo Electrónico</label>
+          <input type="email" id="loginEmail" placeholder="admin@homecare.com" required>
+        </div>
+        <div class="form-group">
+          <label>Contraseña</label>
+          <input type="password" id="loginPassword" placeholder="••••••••" required>
+        </div>
+        <button type="submit" class="btn-submit">Ingresar al Sistema</button>
+        <div id="loginError" class="error-msg">Correo o contraseña incorrectos</div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL NUEVA CITA CON PRIORIDAD EXPANDIDA -->
+  <div id="nuevaCitaModal" class="modal-overlay" style="display: none;">
+    <div class="modal-box">
+      <button class="btn-close" onclick="cerrarModalCita()">&times;</button>
+      <h3>Agendar Nueva Cita Domiciliaria</h3>
+      <form id="formNuevaCita">
+        <div class="form-group">
+          <label>Nombre del Paciente</label>
+          <input type="text" id="citaNombre" required>
+        </div>
+        <div class="form-group">
+          <label>Documento (DUI)</label>
+          <input type="text" id="citaDui" placeholder="00000000-0" required>
+        </div>
+        <div class="form-group">
+          <label>Teléfono</label>
+          <input type="text" id="citaTel" placeholder="2200-0000" required>
+        </div>
+        <div class="form-group">
+          <label>Dirección Exacta (Calle / Residencial)</label>
+          <input type="text" id="citaDir" placeholder="Ej. Calle Los Abetos, San Salvador" required>
+        </div>
+        <div class="form-group">
+          <label>Síntomas Iniciales</label>
+          <textarea id="citaSintomas" rows="2" required></textarea>
+        </div>
+        <div class="form-group">
+          <label>Prioridad / Triaje Clínico</label>
+          <select id="citaPrioridad">
+            <option value="Baja">Baja / Rutina</option>
+            <option value="Normal" selected>Normal</option>
+            <option value="Alta">Alta</option>
+            <option value="Urgente">Urgente</option>
+          </select>
+        </div>
+        <button type="submit" class="btn-submit">Guardar Cita</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL INGRESO DE EXPEDIENTE -->
+  <div id="expedienteModal" class="modal-overlay" style="display: none;">
+    <div class="modal-box">
+      <button class="btn-close" onclick="cerrarModalExpediente()">&times;</button>
+      <h3>Atención y Registro de Signos Vitales</h3>
+      <form id="formExpediente">
+        <input type="hidden" id="expedienteCitaId">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+          <div class="form-group">
+            <label>Presión Arterial</label>
+            <input type="text" id="expPresion" placeholder="120/80" required>
+          </div>
+          <div class="form-group">
+            <label>Temperatura (°C)</label>
+            <input type="text" id="expTemp" placeholder="36.5" required>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Ritmo Cardíaco (BPM)</label>
+          <input type="number" id="expRitmo" placeholder="72" required>
+        </div>
+        <div class="form-group">
+          <label>Diagnóstico Médico</label>
+          <textarea id="expDiagnostico" rows="2" required></textarea>
+        </div>
+        <div class="form-group">
+          <label>Tratamiento / Indicaciones</label>
+          <textarea id="expTratamiento" rows="2" required></textarea>
+        </div>
+        <button type="submit" class="btn-submit">Guardar y Marcar Como Completada</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL VER EXPEDIENTE COMPLETO -->
+  <div id="verExpedienteModal" class="modal-overlay" style="display: none;">
+    <div class="modal-box">
+      <button class="btn-close" onclick="cerrarModalVerExpediente()">&times;</button>
+      <h3>Expediente Médico Completado</h3>
+      <div class="expediente-view-box" id="expedienteDetallesContent"></div>
+      <button class="btn-submit" onclick="cerrarModalVerExpediente()" style="margin-top: 15px;">Cerrar</button>
+    </div>
+  </div>
+
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div>
+      <div class="brand">
+        <i class="fa-solid fa-heart-pulse"></i>
+        <span>HomeCare</span>
+      </div>
+      <ul class="nav-list">
+        <li class="nav-item active" data-target="dashboardSection"><i class="fa-solid fa-chart-line"></i> Dashboard</li>
+        <li class="nav-item" data-target="citasSection"><i class="fa-solid fa-calendar-check"></i> Citas Médicas</li>
+        <li class="nav-item" data-target="pacientesSection"><i class="fa-solid fa-user-group"></i> Pacientes</li>
+      </ul>
+    </div>
+
+    <div class="user-profile">
+      <div class="user-info">
+        <i class="fa-solid fa-user-doctor"></i>
+        <div>
+          <div id="userName" style="font-weight: bold; font-size: 0.9rem;">Victoria Hernández</div>
+          <div id="userRole" style="font-size: 0.75rem; color: var(--text-muted);">Administradora</div>
+        </div>
+      </div>
+      <button class="btn-logout" id="btnLogout" title="Cerrar Sesión"><i class="fa-solid fa-right-from-bracket"></i></button>
+    </div>
+  </div>
+
+  <!-- MAIN CONTENT -->
+  <div class="main-content">
+    
+    <!-- DASHBOARD -->
+    <div id="dashboardSection" class="content-section active">
+      <div class="header-container">
+        <div class="header-title">
+          <h1>Gestión de Visitas Domiciliarias</h1>
+          <p>Monitoreo y administración de pacientes en tiempo real</p>
+        </div>
+        <button class="btn-nueva-cita" onclick="abrirModalCita()"><i class="fa-solid fa-plus"></i> Nueva Cita</button>
+      </div>
+
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div>
+            <div style="color: #b0c4de; font-size: 0.8rem; font-weight: bold;">TOTAL DE CITAS</div>
+            <div class="stat-number" id="statTotal">6</div>
+          </div>
+          <i class="fa-solid fa-calendar-days" style="font-size: 2rem; color: var(--accent-light);"></i>
+        </div>
+        <div class="stat-card">
+          <div>
+            <div style="color: var(--warning); font-size: 0.8rem; font-weight: bold;">PENDIENTES</div>
+            <div class="stat-number" style="color: var(--warning);" id="statPendientes">3</div>
+          </div>
+          <i class="fa-solid fa-clock" style="font-size: 2rem; color: var(--warning);"></i>
+        </div>
+        <div class="stat-card">
+          <div>
+            <div style="color: #ff6b81; font-size: 0.8rem; font-weight: bold;">PRIORITARIAS (ALTA / URGENTE)</div>
+            <div class="stat-number" style="color: #ff6b81;" id="statPrioritarias">0</div>
+          </div>
+          <i class="fa-solid fa-triangle-exclamation" style="font-size: 2rem; color: #ff6b81;"></i>
+        </div>
+      </div>
+
+      <!-- MAPA GOOGLE MAPS REAL -->
+      <div class="map-container">
+        <div style="font-weight: bold; display: flex; justify-content: space-between; align-items: center;">
+          <span><i class="fa-solid fa-map-location-dot" style="color: var(--accent-light);"></i> Ubicación Geográfica de Pacientes (Google Maps Real)</span>
+          <span style="font-size: 0.8rem; color: #b0c4de; font-weight: normal;">Haz clic en un paciente para enfocar el punto exacto</span>
+        </div>
+        
+        <div class="map-layout">
+          <div class="locations-sidebar" id="locationsList"></div>
+
+          <div class="map-iframe-box">
+            <iframe 
+              id="googleMapIframe"
+              src="https://maps.google.com/maps?q=13.6983,-89.1091+(Residencial+Altavista+Senda+4)+&z=17&output=embed" 
+              allowfullscreen="" 
+              loading="lazy">
+            </iframe>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CITAS MÉDICAS -->
+    <div id="citasSection" class="content-section">
+      <div class="header-container">
+        <div class="header-title">
+          <h1>Gestión de Citas Médicas</h1>
+          <p>Listado detallado e historial de visitas domiciliarias</p>
+        </div>
+        <button class="btn-nueva-cita" onclick="abrirModalCita()"><i class="fa-solid fa-plus"></i> Nueva Cita</button>
+      </div>
+
+      <div class="data-table-container">
+        <div class="controls-bar">
+          <div class="search-box">
+            <i class="fa-solid fa-magnifying-glass"></i>
+            <input type="text" id="inputBuscar" placeholder="Buscar paciente o DUI..." onkeyup="filtrarTabla()" onkeypress="if(event.key === 'Enter') filtrarTabla()">
+          </div>
+          <select class="select-filter" id="selectEstado" onchange="filtrarTabla()">
+            <option value="Todos">Todos los Estados</option>
+            <option value="Pendiente">Pendiente</option>
+            <option value="Completada">Completada</option>
+          </select>
+          <span class="badge-bd">● Conexión BD Activa</span>
+          <button class="btn-pdf" onclick="descargarPDFGeneral()"><i class="fa-solid fa-file-pdf"></i> Exportar Reporte PDF</button>
+        </div>
+
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>PACIENTE</th>
+              <th>TELÉFONO</th>
+              <th>DIRECCIÓN</th>
+              <th>SÍNTOMAS INICIALES</th>
+              <th>PRIORIDAD</th>
+              <th>ESTADO</th>
+              <th>ACCIONES</th>
+            </tr>
+          </thead>
+          <tbody id="tablaCitasBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- PACIENTES -->
+    <div id="pacientesSection" class="content-section">
+      <div class="header-container">
+        <div class="header-title">
+          <h1>Directorio de Pacientes</h1>
+          <p>Registro completo de pacientes registrados en la plataforma</p>
+        </div>
+        <button class="btn-pdf" onclick="descargarPDFGeneral()"><i class="fa-solid fa-file-pdf"></i> Exportar PDF General</button>
+      </div>
+
+      <div class="patients-grid" id="patientsGrid"></div>
+    </div>
+
+  </div>
+
+  <script>
+    let citasGlobales = [];
+    const expedientesLocales = {};
+
+    const expedientesPredeterminados = {
+      6: {
+        presion_arterial: '130/85',
+        temperatura_celsius: '37.2',
+        ritmo_cardiaco_bpm: '78',
+        diagnostico: 'Cuadro leve de hipertensión arterial asociada a estrés y dolor articular posquirúrgico.',
+        tratamiento: 'Enalapril 10mg cada 12 horas por 7 días. Paracetamol 500mg cada 8 horas si hay dolor. Reposo relativo.'
+      },
+      4: {
+        presion_arterial: '130/85',
+        temperatura_celsius: '36.4',
+        ritmo_cardiaco_bpm: '80',
+        diagnostico: 'Glucemia controlada (110 mg/dL).',
+        tratamiento: 'Continuar con Metformina 850mg.'
+      },
+      3: {
+        presion_arterial: '125/82',
+        temperatura_celsius: '36.8',
+        ritmo_cardiaco_bpm: '70',
+        diagnostico: 'Hidratación mejorada satisfactoriamente.',
+        tratamiento: 'Suero oral y Losartán 50mg.'
+      }
+    };
+
+    const ubicacionesIniciales = [
+      { id: 8, paciente: 'Carlos Eduardo Mendoza Flores', documento_id: '04567891-2', telefono: '2299-1122', direccion: 'Residencial Altavista, Senda 4 #12, Ilopango, San Salvador', lat: 13.6983, lng: -89.1091, sintomas_iniciales: 'Control respiratorio y evaluación de oxigenación.', prioridad: 'Normal', estado: 'Pendiente' },
+      { id: 7, paciente: 'Teresa de Jesús Andrade', documento_id: '01982374-1', telefono: '2277-3344', direccion: 'Reparto Guadalupe, Pasaje 3 #18, Soyapango', lat: 13.7135, lng: -89.1412, sintomas_iniciales: 'Toma de muestra sanguínea para exámenes de laboratorio y control de glucosa.', prioridad: 'Baja', estado: 'Pendiente' },
+      { id: 6, paciente: 'Mariana Marcela Rivas', documento_id: '02847593-4', telefono: '7201-5544', direccion: 'Colonia San Mateo, Calle Los Almendros #12, San Salvador', lat: 13.6925, lng: -89.2210, sintomas_iniciales: 'Curación de herida quirúrgica e inyección de analgésico programado.', prioridad: 'Normal', estado: 'Completada' },
+      { id: 5, paciente: 'Carmen Alicia Gómez', documento_id: '01456789-0', telefono: '2225-4321', direccion: 'Colonia Médica, Avenida Dr. Emilio Álvarez #104, San Salvador', lat: 13.7058, lng: -89.2005, sintomas_iniciales: 'Monitoreo de presión arterial y control semanal de glucosa.', prioridad: 'Alta', estado: 'Pendiente' },
+      { id: 4, paciente: 'José Luis Meléndez', documento_id: '04567890-2', telefono: '+503 7543-8901', direccion: 'Residencial Los Abetos, Calle Los Abetos #18, San Salvador', lat: 13.6912, lng: -89.2325, sintomas_iniciales: 'Paciente de 72 años con diabetes tipo 2. Requiere toma de glucemia capilar.', prioridad: 'Normal', estado: 'Completada' },
+      { id: 3, paciente: 'Ana Sofía Martínez', documento_id: '02345678-9', telefono: '+503 7890-1234', direccion: 'Colonia Escalón, Avenida Masferrer Norte #321, San Salvador', lat: 13.7091, lng: -89.2415, sintomas_iniciales: 'Adulto mayor con deshidratación leve y seguimiento de hipertensión.', prioridad: 'Alta', estado: 'Completada' }
+    ];
+
+    function enfocarUbicacionMap(cita, cardElement) {
+      document.querySelectorAll('.location-card').forEach(c => c.classList.remove('active'));
+      if (cardElement) cardElement.classList.add('active');
+
+      const lat = cita.lat || 13.6983;
+      const lng = cita.lng || -89.1091;
+      const etiqueta = encodeURIComponent(cita.paciente + ' (' + cita.direccion.split(',')[0] + ')');
+
+      const iframe = document.getElementById('googleMapIframe');
+      iframe.src = `https://maps.google.com/maps?q=${lat},${lng}+(${etiqueta})&z=17&output=embed`;
+    }
+
+    function renderizarListaMapa(lista) {
+      const container = document.getElementById('locationsList');
+      container.innerHTML = '';
+
+      lista.forEach((c, index) => {
+        const colorEstado = c.estado === 'Completada' ? 'var(--success)' : 'var(--warning)';
+
+        const card = document.createElement('div');
+        card.className = `location-card ${index === 0 ? 'active' : ''}`;
+        card.onclick = () => enfocarUbicacionMap(c, card);
+        card.innerHTML = `
+          <h5>
+            <span>${c.paciente}</span>
+            <span class="location-badge" style="background:${colorEstado}; color:#03045e;">${c.estado}</span>
+          </h5>
+          <p><i class="fa-solid fa-location-dot" style="color: var(--accent-light);"></i> ${c.direccion}</p>
+        `;
+
+        container.appendChild(card);
+      });
+
+      if (lista.length > 0) {
+        enfocarUbicacionMap(lista[0], container.firstElementChild);
+      }
+    }
+
+    async function cargarCitas() {
+      try {
+        const res = await fetch('http://localhost:3000/api/citas');
+        const data = await res.json();
+        citasGlobales = data.length > 0 ? data : ubicacionesIniciales;
+      } catch (err) {
+        citasGlobales = ubicacionesIniciales;
+      }
+
+      renderizarTablas(citasGlobales);
+      actualizarEstadisticas(citasGlobales);
+      renderizarListaMapa(citasGlobales);
+    }
+
+    // Contabiliza únicamente las citas PENDIENTES cuya prioridad sea 'Alta', 'Urgente' o 'Prioritaria'
+    function actualizarEstadisticas(lista) {
+      document.getElementById('statTotal').textContent = lista.length;
+      document.getElementById('statPendientes').textContent = lista.filter(c => c.estado === 'Pendiente').length;
+      
+      const prioritariasPendientes = lista.filter(c => 
+        c.estado === 'Pendiente' && ['Alta', 'Urgente', 'Prioritaria'].includes(c.prioridad)
+      ).length;
+
+      document.getElementById('statPrioritarias').textContent = prioritariasPendientes;
+    }
+
+    function obtenerClasePrioridad(prioridad) {
+      switch (prioridad) {
+        case 'Baja': return 'badge-baja';
+        case 'Alta': return 'badge-alta';
+        case 'Urgente': return 'badge-urgente';
+        case 'Prioritaria': return 'badge-urgente';
+        default: return 'badge-normal';
+      }
+    }
+
+    function renderizarTablas(lista) {
+      const tbody = document.getElementById('tablaCitasBody');
+      const grid = document.getElementById('patientsGrid');
+      
+      tbody.innerHTML = '';
+      grid.innerHTML = '';
+
+      lista.forEach(c => {
+        let botonAccion = (c.estado === 'Completada')
+          ? `<button class="action-btn completed" title="Ver Expediente" onclick="verExpedienteCompleto(${c.id})"><i class="fa-solid fa-check"></i></button>`
+          : `<button class="action-btn" title="Atender Cita" onclick="abrirModalExpediente(${c.id})"><i class="fa-solid fa-plus"></i></button>`;
+
+        const clasePrioridad = obtenerClasePrioridad(c.prioridad);
+
+        tbody.innerHTML += `
+          <tr>
+            <td><b>#${c.id}</b></td>
+            <td><b>${c.paciente}</b></td>
+            <td>${c.telefono || 'N/A'}</td>
+            <td>${c.direccion || 'N/A'}</td>
+            <td style="max-width: 250px;">${c.sintomas_iniciales}</td>
+            <td><span class="badge-prioridad ${clasePrioridad}">${c.prioridad || 'Normal'}</span></td>
+            <td><span class="status-tag ${c.estado === 'Pendiente' ? 'status-pendiente' : 'status-completada'}">${c.estado}</span></td>
+            <td>
+              ${botonAccion}
+              <button class="action-btn delete" title="Eliminar" onclick="eliminarCita(${c.id})"><i class="fa-solid fa-trash"></i></button>
+            </td>
+          </tr>
+        `;
+
+        const inicial = c.paciente ? c.paciente.charAt(0) : 'P';
+        grid.innerHTML += `
+          <div class="patient-card">
+            <div style="display: flex; gap: 15px; align-items: center;">
+              <div class="patient-avatar">${inicial}</div>
+              <div class="patient-details">
+                <h4>${c.paciente}</h4>
+                <p>DUI: ${c.documento_id || '00000000-0'}</p>
+                <p><i class="fa-solid fa-location-dot" style="color: #ff6b81;"></i> ${c.direccion || 'El Salvador'}</p>
+              </div>
+            </div>
+            <button class="action-btn delete" title="Descargar PDF Individual" onclick="descargarPDFPaciente(${c.id})"><i class="fa-solid fa-file-pdf"></i></button>
+          </div>
+        `;
+      });
+    }
+
+    /* === FUNCIONES DE DESCARGA DIRECTA DE ARCHIVO PDF === */
+
+    function descargarPDFGeneral() {
+      const fecha = new Date().toLocaleString('es-SV');
+      let filasHtml = '';
+
+      citasGlobales.forEach(c => {
+        filasHtml += `
+          <tr style="border-bottom: 1px solid #ddd;">
+            <td style="padding: 10px; font-weight: bold; border-right: 1px solid #eee;">#${c.id}</td>
+            <td style="padding: 10px; border-right: 1px solid #eee;">${c.paciente}</td>
+            <td style="padding: 10px; border-right: 1px solid #eee;">${c.telefono || 'N/A'}</td>
+            <td style="padding: 10px; border-right: 1px solid #eee;">${c.direccion}</td>
+            <td style="padding: 10px; border-right: 1px solid #eee;">${c.sintomas_iniciales}</td>
+            <td style="padding: 10px; border-right: 1px solid #eee;">${c.prioridad || 'Normal'}</td>
+            <td style="padding: 10px; font-weight: bold; color: ${c.estado === 'Completada' ? '#2a9d8f' : '#ffb703'};">${c.estado}</td>
+          </tr>
+        `;
+      });
+
+      const plantilla = document.createElement('div');
+      plantilla.style.padding = '30px';
+      plantilla.style.fontFamily = 'Arial, sans-serif';
+      plantilla.style.color = '#333';
+      plantilla.innerHTML = `
+        <div style="border-bottom: 2px solid #00b4d8; padding-bottom: 12px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center;">
+          <h2 style="color: #03045e; margin: 0;">HomeCare - Reporte de Visitas Domiciliarias</h2>
+          <span style="font-size: 12px; color: #666;">Fecha de Emisión: ${fecha}</span>
+        </div>
+        <table style="width: 100%; border-collapse: collapse; font-size: 12px; text-align: left;">
+          <thead>
+            <tr style="background-color: #03045e; color: white;">
+              <th style="padding: 10px;">ID</th>
+              <th style="padding: 10px;">Paciente</th>
+              <th style="padding: 10px;">Teléfono</th>
+              <th style="padding: 10px;">Dirección</th>
+              <th style="padding: 10px;">Síntomas</th>
+              <th style="padding: 10px;">Prioridad</th>
+              <th style="padding: 10px;">Estado</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${filasHtml}
+          </tbody>
+        </table>
+        <div style="margin-top: 30px; border-top: 1px solid #ddd; padding-top: 10px; text-align: right; font-size: 11px; color: #888;">
+          HomeCare El Salvador - Sistema de Gestión Médica
+        </div>
+      `;
+
+      const opciones = {
+        margin: 10,
+        filename: 'Reporte_Visitas_HomeCare.pdf',
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2 },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
+      };
+
+      html2pdf().set(opciones).from(plantilla).save();
+    }
+
+    function descargarPDFPaciente(id) {
+      const c = citasGlobales.find(item => item.id == id);
+      if (!c) return;
+
+      const fecha = new Date().toLocaleString('es-SV');
+      
+      const expGuardado = expedientesLocales[id] || expedientesPredeterminados[id] || {};
+
+      const presion = expGuardado.presion_arterial || c.presion_arterial || 'N/A';
+      
+      let temp = expGuardado.temperatura_celsius || c.temperatura_celsius;
+      temp = temp ? (temp.toString().includes('°C') ? temp : temp + ' °C') : 'N/A';
+      
+      let ritmo = expGuardado.ritmo_cardiaco_bpm || c.ritmo_cardiaco_bpm;
+      ritmo = ritmo ? (ritmo.toString().includes('BPM') ? ritmo : ritmo + ' BPM') : 'N/A';
+      
+      const diag = expGuardado.diagnostico || c.diagnostico || 'Pendiente de revisión';
+      const trata = expGuardado.tratamiento || c.tratamiento || 'Ninguno';
+
+      const plantilla = document.createElement('div');
+      plantilla.style.padding = '35px';
+      plantilla.style.fontFamily = 'Arial, sans-serif';
+      plantilla.style.color = '#333';
+      plantilla.innerHTML = `
+        <div style="border-bottom: 2px solid #00b4d8; padding-bottom: 12px; margin-bottom: 20px;">
+          <h2 style="color: #03045e; margin: 0;">HomeCare - Reporte de Visita Domiciliaria</h2>
+          <span style="font-size: 12px; color: #666;">Fecha de Emisión: ${fecha}</span>
+        </div>
+        <table style="width: 100%; border-collapse: collapse; font-size: 13px; text-align: left; margin-bottom: 20px;">
+          <thead>
+            <tr style="background-color: #03045e; color: white;">
+              <th style="padding: 10px;">ID</th>
+              <th style="padding: 10px;">PACIENTE</th>
+              <th style="padding: 10px;">DUI / TELÉFONO</th>
+              <th style="padding: 10px;">DIRECCIÓN</th>
+              <th style="padding: 10px;">ESTADO</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr style="border-bottom: 1px solid #ddd;">
+              <td style="padding: 10px; font-weight: bold;">#${c.id}</td>
+              <td style="padding: 10px;">${c.paciente}</td>
+              <td style="padding: 10px;">${c.documento_id || 'N/A'}<br>${c.telefono || ''}</td>
+              <td style="padding: 10px;">${c.direccion}</td>
+              <td style="padding: 10px; font-weight: bold; color: ${c.estado === 'Completada' ? '#2a9d8f' : '#ffb703'};">${c.estado}</td>
+            </tr>
+          </tbody>
+        </table>
+        
+        <div style="background-color: #f8f9fa; border: 1px solid #e9ecef; border-radius: 8px; padding: 20px; margin-top: 20px;">
+          <h4 style="color: #03045e; margin-top: 0; border-bottom: 1px solid #dee2e6; padding-bottom: 8px;">Detalles del Expediente y Síntomas</h4>
+          <p style="margin-bottom: 8px;"><strong>Síntomas Iniciales:</strong> ${c.sintomas_iniciales}</p>
+          <p style="margin-bottom: 8px;"><strong>Presión Arterial:</strong> ${presion}</p>
+          <p style="margin-bottom: 8px;"><strong>Temperatura:</strong> ${temp}</p>
+          <p style="margin-bottom: 8px;"><strong>Ritmo Cardíaco:</strong> ${ritmo}</p>
+          <p style="margin-bottom: 8px;"><strong>Diagnóstico:</strong> ${diag}</p>
+          <p style="margin-bottom: 8px;"><strong>Tratamiento:</strong> ${trata}</p>
+        </div>
+
+        <div style="margin-top: 40px; border-top: 1px solid #ddd; padding-top: 10px; text-align: right; font-size: 11px; color: #888;">
+          HomeCare El Salvador - Expediente Individual de Atención Médica
+        </div>
+      `;
+
+      const nombreArchivo = `Reporte_HomeCare_${c.paciente.replace(/ /g, '_')}.pdf`;
+
+      const opciones = {
+        margin: 12,
+        filename: nombreArchivo,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2 },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+      };
+
+      html2pdf().set(opciones).from(plantilla).save();
+    }
+
+    function filtrarTabla() {
+      const query = document.getElementById('inputBuscar').value.trim().toLowerCase();
+      const querySinGuion = query.replace(/-/g, '');
+      const estado = document.getElementById('selectEstado').value;
+
+      const filtradas = citasGlobales.filter(c => {
+        const nombre = (c.paciente || '').toLowerCase();
+        const dui = (c.documento_id || '').toLowerCase();
+        const duiSinGuion = dui.replace(/-/g, '');
+        const direccion = (c.direccion || '').toLowerCase();
+
+        const coincideBusqueda = query === '' || 
+                                 nombre.includes(query) || 
+                                 dui.includes(query) || 
+                                 duiSinGuion.includes(querySinGuion) || 
+                                 direccion.includes(query);
+
+        const coincideEstado = (estado === 'Todos') || (c.estado === estado);
+
+        return coincideBusqueda && coincideEstado;
+      });
+
+      renderizarTablas(filtradas);
+    }
+
+    function abrirModalCita() { document.getElementById('nuevaCitaModal').style.display = 'flex'; }
+    function cerrarModalCita() { document.getElementById('nuevaCitaModal').style.display = 'none'; }
+    function abrirModalExpediente(citaId) {
+      document.getElementById('expedienteCitaId').value = citaId;
+      document.getElementById('expedienteModal').style.display = 'flex';
+    }
+    function cerrarModalExpediente() { document.getElementById('expedienteModal').style.display = 'none'; }
+    function cerrarModalVerExpediente() { document.getElementById('verExpedienteModal').style.display = 'none'; }
+
+    document.getElementById('formExpediente').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const citaId = document.getElementById('expedienteCitaId').value;
+      const datosSignos = {
+        cita_id: citaId,
+        presion_arterial: document.getElementById('expPresion').value,
+        temperatura_celsius: document.getElementById('expTemp').value,
+        ritmo_cardiaco_bpm: document.getElementById('expRitmo').value,
+        diagnostico: document.getElementById('expDiagnostico').value,
+        tratamiento: document.getElementById('expTratamiento').value,
+        observaciones: 'Atención domiciliaria completada.'
+      };
+
+      try {
+        await fetch('http://localhost:3000/api/expedientes', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(datosSignos)
+        });
+      } catch (err) {}
+
+      expedientesLocales[citaId] = datosSignos;
+      const cita = citasGlobales.find(c => c.id == citaId);
+      if (cita) {
+        cita.estado = 'Completada';
+        Object.assign(cita, datosSignos);
+      }
+
+      cerrarModalExpediente();
+      document.getElementById('formExpediente').reset();
+      renderizarTablas(citasGlobales);
+      actualizarEstadisticas(citasGlobales);
+      renderizarListaMapa(citasGlobales);
+    });
+
+    async function verExpedienteCompleto(citaId) {
+      let exp = expedientesLocales[citaId] || expedientesPredeterminados[citaId];
+      const cita = citasGlobales.find(c => c.id == citaId);
+
+      if (!exp && cita) {
+        try {
+          const res = await fetch(`http://localhost:3000/api/expedientes/${citaId}`);
+          if (res.ok) exp = await res.json();
+        } catch (e) {}
+      }
+
+      exp = exp || cita;
+
+      const container = document.getElementById('expedienteDetallesContent');
+      container.innerHTML = `
+        <p><strong>Paciente:</strong> ${cita ? cita.paciente : 'Desconocido'}</p>
+        <p><strong>DUI:</strong> ${cita ? cita.documento_id : 'N/A'}</p>
+        <hr style="border-color: rgba(255,255,255,0.1); margin: 10px 0;">
+        <p><strong>Presión Arterial:</strong> ${exp.presion_arterial || '120/80'}</p>
+        <p><strong>Temperatura:</strong> ${exp.temperatura_celsius || '36.5'} °C</p>
+        <p><strong>Ritmo Cardíaco:</strong> ${exp.ritmo_cardiaco_bpm || '72'} BPM</p>
+        <p><strong>Diagnóstico:</strong> ${exp.diagnostico || 'Atención realizada'}</p>
+        <p><strong>Tratamiento:</strong> ${exp.tratamiento || 'Ninguno'}</p>
+      `;
+
+      document.getElementById('verExpedienteModal').style.display = 'flex';
+    }
+
+    document.getElementById('formNuevaCita').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const pacienteNombre = document.getElementById('citaNombre').value;
+      const direccionTexto = document.getElementById('citaDir').value;
+
+      const nueva = {
+        id: Date.now(),
+        paciente: pacienteNombre,
+        documento_id: document.getElementById('citaDui').value,
+        telefono: document.getElementById('citaTel').value,
+        direccion: direccionTexto,
+        lat: 13.6929,
+        lng: -89.2182,
+        sintomas_iniciales: document.getElementById('citaSintomas').value,
+        prioridad: document.getElementById('citaPrioridad').value,
+        estado: 'Pendiente'
+      };
+
+      try {
+        await fetch('http://localhost:3000/api/citas', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(nueva)
+        });
+      } catch (err) {}
+
+      citasGlobales.unshift(nueva);
+      cerrarModalCita();
+      document.getElementById('formNuevaCita').reset();
+      renderizarTablas(citasGlobales);
+      actualizarEstadisticas(citasGlobales);
+      renderizarListaMapa(citasGlobales);
+    });
+
+    async function eliminarCita(id) {
+      if (confirm('¿Deseas eliminar esta cita médica?')) {
+        try {
+          await fetch(`http://localhost:3000/api/citas/${id}`, { method: 'DELETE' });
+        } catch (err) {}
+
+        citasGlobales = citasGlobales.filter(c => c.id != id);
+        renderizarTablas(citasGlobales);
+        actualizarEstadisticas(citasGlobales);
+        renderizarListaMapa(citasGlobales);
+      }
+    }
+
+    // Auth & Navigation
+    const loginModal = document.getElementById('loginModal');
+    const loginForm = document.getElementById('loginForm');
+    const loginError = document.getElementById('loginError');
+    const btnLogout = document.getElementById('btnLogout');
+    const userName = document.getElementById('userName');
+    const userRole = document.getElementById('userRole');
+
+    function verificarSesion() {
+      userName.textContent = 'Victoria Hernández';
+      userRole.textContent = 'Administradora';
+
+      const usuario = JSON.parse(localStorage.getItem('usuarioHomeCare'));
+      if (usuario) {
+        loginModal.style.display = 'none';
+        cargarCitas();
+      } else {
+        loginModal.style.display = 'flex';
+      }
+    }
+
+    loginForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      loginError.style.display = 'none';
+      const email = document.getElementById('loginEmail').value;
+      const password = document.getElementById('loginPassword').value;
+
+      try {
+        const response = await fetch('http://localhost:3000/api/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password })
+        });
+        const data = await response.json();
+
+        if (response.ok) {
+          data.usuario.nombre = 'Victoria Hernández';
+          data.usuario.rol = 'Administradora';
+          localStorage.setItem('usuarioHomeCare', JSON.stringify(data.usuario));
+          verificarSesion();
+        } else {
+          loginError.textContent = data.error || 'Credenciales inválidas';
+          loginError.style.display = 'block';
+        }
+      } catch (err) {
+        loginError.textContent = 'Error al conectar con el servidor';
+        loginError.style.display = 'block';
+      }
+    });
+
+    btnLogout.addEventListener('click', () => {
+      localStorage.removeItem('usuarioHomeCare');
+      verificarSesion();
+    });
+
+    const navItems = document.querySelectorAll('.nav-item');
+    const sections = document.querySelectorAll('.content-section');
+
+    navItems.forEach(item => {
+      item.addEventListener('click', () => {
+        navItems.forEach(i => i.classList.remove('active'));
+        sections.forEach(s => s.classList.remove('active'));
+
+        item.classList.add('active');
+        const targetId = item.getAttribute('data-target');
+        document.getElementById(targetId).classList.add('active');
+
+        if (targetId !== 'dashboardSection') {
+          cargarCitas();
+        }
+      });
+    });
+
+    window.addEventListener('load', verificarSesion);
+  </script>
+</body>
+</html>
