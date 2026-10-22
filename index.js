@@ -13,13 +13,11 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 // Configuración de PostgreSQL
 const pool = new Pool({
-  user: 'postgres',
-  host: 'localhost',
-  database: 'homecare_db',
-  password: 'pamela123',
-  port: 5432,
+  connectionString: process.env.DATABASE_URL,
+  ssl: {
+    rejectUnauthorized: false
+  }
 });
-
 // Comprobar conexión
 pool.connect((err, client, release) => {
   if (err) {
